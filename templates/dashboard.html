@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+
+{% block body%}
+<div class="container">
+    <h1>Welcome, {{email}}</h1>
+    <p>Welcome to your Dashboard</p>
+    <a href="" class="btn btn-logout"></a>
+    <form method="post" action="{{ url_for('logout') }}" style="display:inline;">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+        <button type="submit" class="btn btn-logout">Logout</button>
+    </form>
+</div>
+{% endblock%} 
