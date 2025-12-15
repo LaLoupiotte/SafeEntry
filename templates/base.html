@@ -3,17 +3,20 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="">
+    <link rel="stylesheet" href="{{url_for('static', filename='style.css')}}">
     <script src="https://www.google.com/recaptcha/api.js" async defer></script>
     <title>Safe Entry</title>
 </head>
 <body>
 
-    <header>Application Security Project</header>
-    {% block body%}
+    <header class="app_header">Application Security Project</header>
+    
+    <main class="content-area">
+        {% block body%}
 
 
-    {% endblock %}
-
+        {% endblock %}
+    </main>
+   
 </body>
 </html>

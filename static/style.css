@@ -1,0 +1,118 @@
+body {
+    font-family: 'Arial', sans-serif;
+    background-color: beige;
+    min-height: 100px;
+    margin: 0;
+}
+
+.app_header {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin:50px;
+    margin-bottom: 20px;
+    padding: 20px;
+    font-size: 1.5em;
+}
+
+.content-area{
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    padding-bottom: 50px;
+}
+
+.container {
+    background-color: rgb(255, 219, 178);
+    padding: 40px;
+    border-radius: 10px;
+    box-shadow: 0 12px 18px rgba(0, 0, 0, 0.1);
+    width: 100%;
+    max-width: 400px;
+    text-align: center;
+    margin-top: 0px;
+   
+}
+
+.container h1 {
+    color: #333;
+    margin-bottom: 25px;
+    font-size: 35px;
+}
+
+.g-recaptcha {
+    display: inline-block;
+    margin-bottom: 20px;
+}
+
+
+.email-input {
+    max-width: 400px;
+    width: 100%;
+    margin: 5px;
+}
+
+.pass-input {
+    margin: 5px;
+    max-width: 400px;
+    width: 100%;
+}
+
+.input-field{
+    height: 25px;
+    width: 250px;
+    border-radius: 5px;
+    border-width: 1.75px;
+}
+
+.buttons {
+    display: flex;
+    justify-content:space-between;
+    margin-top: 20px;
+    align-items: center;
+
+    width: 250px;
+
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.btn {
+    flex-grow: 0;
+    flex-basis: auto;
+
+    width: 100px;
+
+    margin-right: 10px;
+
+    padding: 10px 20px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.8em;
+    transition: background-color 0.3s ease;
+
+ 
+}
+
+.btn-login {
+    background-color: #007bff;
+    color: white;
+}
+
+.btn-reg {
+    background-color: #6c757d;
+    color: white
+}
+
+.buttons .btn:last-child {
+    margin-right: 0;
+}
+
+.btn-login:hover{
+    background-color: #0056b3;
+}
+
+.btn-reg:hover{
+    background-color: #5a6268;
+}
