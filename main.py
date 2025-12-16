@@ -118,7 +118,7 @@ def send_verification_email(user):
     sender_email = "appsec2025026@gmail.com"
     app_password = "getqpuxwjsglxxyh"
     # Create the email
-
+    
     message = MIMEMultipart("alternative")
     message["Subject"] = "Your activation link"
     message["From"] = sender_email
@@ -219,7 +219,6 @@ def dashboard():
     return redirect(url_for('home'))
 
 @app.route("/verify/<token>")
-@app.route("/verify/<token>")
 def verify_email(token):
     try:
         # Try to decode normally first (valid + not expired)
@@ -259,6 +258,108 @@ def verify_email(token):
     db.session.commit()
 
     return render_template("index.html", RECAPTCHA_SITE_KEY=app.config["RECAPTCHA_SITE_KEY"], message="Email verified! You can now log in.")
+
+@app.route("/forgotten_password", methods=["GET", "POST"])
+@limiter.limit("3/hour")
+def forgotten_password():
+    if request.method == "POST":
+        email = request.form.get("email")
+
+        if not is_valid_email(email):
+            return render_template("forgotten_password.html", error="Invalid email.")
+
+        user = User.query.filter_by(email=email).first()
+
+        if user:
+            send_password_reset_email(user)
+
+        return render_template(
+            "forgotten_password.html",
+            message="If the email exists, a reset link has been sent."
+        )
+
+    return render_template("forgotten_password.html")
+
+@app.route("/reset_password/<token>", methods=["GET", "POST"])
+def reset_password(token):
+    try:
+        payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+
+        if payload.get("purpose") != "password_reset":
+            raise jwt.InvalidTokenError()
+
+        email = payload["email"]
+
+    except jwt.ExpiredSignatureError:
+        return render_template("index.html", error="Reset link expired.")
+
+    except jwt.InvalidTokenError:
+        return render_template("index.html", error="Invalid reset link.")
+
+    user = User.query.filter_by(email=email).first()
+    if not user:
+        return render_template("index.html", error="Invalid reset request.")
+
+    if request.method == "POST":
+        password = request.form.get("password")
+
+        if not is_valid_password(password):
+            return render_template(
+                "reset_password.html",
+                error="Password must be at least 8 characters with letters and numbers.",
+                token=token
+            )
+
+        user.set_password(password)
+        user.login_attempts = 0
+        user.is_bruteforced = False
+        db.session.commit()
+
+        return render_template("index.html", message="Password reset successful. You can now log in.")
+
+    return render_template("reset_password.html", token=token)
+
+
+
+def generate_password_reset_token(email):
+    payload = {
+        "email": email,
+        "purpose": "password_reset",
+        "exp": datetime.utcnow() + timedelta(hours=1)
+    }
+    return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
+
+def send_password_reset_email(user):
+    token = generate_password_reset_token(user.email)
+    reset_link = url_for("reset_password", token=token, _external=True)
+
+    sender_email = "appsec2025026@gmail.com"
+    app_password = "getqpuxwjsglxxyh"
+
+    message = MIMEMultipart("alternative")
+    message["Subject"] = "Password reset request"
+    message["From"] = sender_email
+    message["To"] = user.email
+
+    html = f"""
+    <html>
+        <body>
+            <p>Click the link below to reset your password:</p>
+            <p><a href="{reset_link}">{reset_link}</a></p>
+            <p>This link expires in 1 hour.</p>
+        </body>
+    </html>
+    """
+
+    message.attach(MIMEText(html, "html"))
+
+    try:
+        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
+            server.login(sender_email, app_password)
+            server.sendmail(sender_email, user.email, message.as_string())
+    except Exception as e:
+        print("Reset email error:", e)
+
 
 
 
