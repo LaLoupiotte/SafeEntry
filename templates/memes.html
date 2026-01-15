@@ -7,10 +7,12 @@
     <!-- Navigation -->
     <div class="nav-bar">
         {% if user %}
-            <p>Welcome, {{ user.email }}!</p>
+            <p>Welcome, {{ user.email }}!{% if is_admin %} <span style="color: var(--primary-color);">(Admin)</span>{% endif %}</p>
             <div class="nav-buttons">
                 <a href="{{ url_for('upload_meme') }}" class="btn btn-upload">Upload Meme</a>
-                <a href="{{ url_for('dashboard') }}" class="btn btn-dashboard">Dashboard</a>
+                {% if is_admin %}
+                    <a href="{{ url_for('dashboard') }}" class="btn btn-dashboard">Admin Dashboard</a>
+                {% endif %}
                 <form method="post" action="{{ url_for('logout') }}" style="display:inline;">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                     <button type="submit" class="btn btn-logout">Logout</button>
