@@ -292,6 +292,20 @@ def send_verification_email(user):
             server.login(sender_email, app_password)
             server.sendmail(sender_email, user.email, message.as_string())
         print("Activation email sent successfully!")
+
+        # Audit log: verification email sent
+        try:
+            ip_addr = request.remote_addr
+        except Exception:
+            ip_addr = None
+        log_audit(
+            action_type="verification_email_sent",
+            actor_id=user.id,
+            target_id=None,
+            target_type=None,
+            details=f"Verification email sent to {user.email}",
+            ip_address=ip_addr,
+        )
     except Exception as e:
         print("Error sending email:", e)
 
@@ -341,6 +355,17 @@ def login():
     user.login_attempts = 0
     db.session.commit()
     session["email"] = user.email
+
+    # Audit log: successful login
+    log_audit(
+        action_type="login",
+        actor_id=user.id,
+        target_id=None,
+        target_type=None,
+        details=f"User {user.email} logged in successfully",
+        ip_address=request.remote_addr,
+    )
+
     return redirect(url_for("memes"))
 
 
@@ -367,6 +392,16 @@ def register():
     db.session.add(new_user)
     db.session.commit()
 
+    # Audit log: user registration
+    log_audit(
+        action_type="register",
+        actor_id=new_user.id,
+        target_id=None,
+        target_type=None,
+        details=f"User registered with email {new_user.email}",
+        ip_address=request.remote_addr,
+    )
+
     send_verification_email(new_user)
 
     return render_template("index.html", RECAPTCHA_SITE_KEY=app.config["RECAPTCHA_SITE_KEY"], message="Account created! Check your email to verify your account.")
@@ -378,14 +413,55 @@ def auth():
 
 @app.route("/logout", methods=["POST"])
 def logout():
+    # Capture current user before clearing session
+    user = get_current_user()
+
+    # Clear session
     session.pop('email', None)
+
+    # Audit log: logout (only if we know the user)
+    if user:
+        log_audit(
+            action_type="logout",
+            actor_id=user.id,
+            target_id=None,
+            target_type=None,
+            details=f"User {user.email} logged out",
+            ip_address=request.remote_addr,
+        )
+
     return redirect(url_for('memes'))
 
 @app.route("/dashboard")
 def dashboard():
-    if "email" in session:
-        return render_template("dashboard.html", email=session['email'])
-    return redirect(url_for('login_page'))
+    """Admin dashboard - User management (Admin only)"""
+    admin = require_admin()
+    if not admin:
+        abort(403)  # Forbidden - not an admin
+    
+    # Get all users
+    users = User.query.order_by(User.created_at.desc()).all()
+
+    # Pagination for logs (50 per page)
+    page = request.args.get("page", 1, type=int)
+    logs_pagination = AuditLog.query.order_by(AuditLog.timestamp.desc()).paginate(
+        page=page,
+        per_page=5,
+        error_out=False,
+    )
+    logs = logs_pagination.items
+
+    # Simple mapping for actor emails in template
+    user_map = {u.id: u.email for u in users}
+    
+    return render_template(
+        "dashboard.html",
+        admin=admin,
+        users=users,
+        logs=logs,
+        logs_page=logs_pagination,
+        user_map=user_map,
+    )
 
 # Meme platform routes
 @app.route("/memes")
@@ -400,6 +476,18 @@ def memes():
     if search_query:
         sanitized_query = sanitize_input(search_query)
         query = query.filter(Meme.caption.contains(sanitized_query))
+
+        # Audit log: search (only if user is authenticated)
+        user_for_log = get_current_user()
+        if user_for_log:
+            log_audit(
+                action_type="search",
+                actor_id=user_for_log.id,
+                target_id=None,
+                target_type=None,
+                details=f"User {user_for_log.email} searched for '{sanitized_query}'",
+                ip_address=request.remote_addr,
+            )
     
     # Order by newest first
     memes_list = query.order_by(Meme.created_at.desc()).all()
@@ -475,6 +563,16 @@ def upload_meme():
         )
         db.session.add(meme)
         db.session.commit()
+
+        # Audit log: meme upload
+        log_audit(
+            action_type="upload_meme",
+            actor_id=user.id,
+            target_id=meme.id,
+            target_type="meme",
+            details=f"Meme uploaded: {meme.filename}",
+            ip_address=request.remote_addr,
+        )
         
         return redirect(url_for('memes'))
     
@@ -515,7 +613,7 @@ def delete_meme(meme_id):
     db.session.delete(meme)
     db.session.commit()
     
-    return redirect(url_for('memes'))
+    return redirect(url_for('dashboard'))
 
 @app.route("/uploads/<filename>")
 def uploaded_file(filename):
@@ -564,7 +662,7 @@ def ban_user(user_id):
     
     db.session.commit()
     
-    return redirect(url_for('memes'))
+    return redirect(url_for('dashboard'))
 
 @app.route("/admin/make_admin/<int:user_id>", methods=["POST"])
 def make_admin(user_id):
@@ -591,7 +689,7 @@ def make_admin(user_id):
     
     db.session.commit()
     
-    return redirect(url_for('memes'))
+    return redirect(url_for('dashboard'))
 
 @app.route("/verify/<token>")
 def verify_email(token):
@@ -643,6 +741,16 @@ def forgotten_password():
         if user:
             send_password_reset_email(user)
 
+            # Audit log: password reset requested
+            log_audit(
+                action_type="password_reset_request",
+                actor_id=user.id,
+                target_id=None,
+                target_type=None,
+                details=f"Password reset requested for {user.email}",
+                ip_address=request.remote_addr,
+            )
+
         return render_template(
             "forgotten_password.html",
             message="If the email exists, a reset link has been sent."
@@ -684,6 +792,16 @@ def reset_password(token):
         user.login_attempts = 0
         user.is_bruteforced = False
         db.session.commit()
+
+        # Audit log: password reset completed
+        log_audit(
+            action_type="password_reset",
+            actor_id=user.id,
+            target_id=None,
+            target_type=None,
+            details=f"Password reset completed for {user.email}",
+            ip_address=request.remote_addr,
+        )
 
         return render_template("index.html", message="Password reset successful. You can now log in.", RECAPTCHA_SITE_KEY=app.config["RECAPTCHA_SITE_KEY"])
 
@@ -727,6 +845,20 @@ def send_password_reset_email(user):
         with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
             server.login(sender_email, app_password)
             server.sendmail(sender_email, user.email, message.as_string())
+
+        # Audit log: password reset email sent
+        try:
+            ip_addr = request.remote_addr
+        except Exception:
+            ip_addr = None
+        log_audit(
+            action_type="password_reset_email_sent",
+            actor_id=user.id,
+            target_id=None,
+            target_type=None,
+            details=f"Password reset email sent to {user.email}",
+            ip_address=ip_addr,
+        )
     except Exception as e:
         print("Reset email error:", e)
 
