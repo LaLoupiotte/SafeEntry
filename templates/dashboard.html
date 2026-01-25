@@ -3,13 +3,153 @@
 {% block body%}
 
 <div class="container">
-    <h1>Welcome, {{email}}</h1>
-    <p>Welcome to your Dashboard</p>
-    <a href="" class="btn btn-logout"></a>
-    <form method="post" action="{{ url_for('logout') }}" style="display:inline;">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-        <button type="submit" class="btn btn-logout">Logout</button>
-    </form>
-</div>
+    <h1>Admin Dashboard</h1>
+    <p>Welcome, {{ admin.email }}</p>
+    
+    <div class="dashboard-nav">
+        <a href="{{ url_for('memes') }}" class="btn btn-primary">View Memes</a>
+        <a href="{{ url_for('upload_meme') }}" class="btn btn-primary">Upload Meme</a>
+        <form method="post" action="{{ url_for('logout') }}" style="display:inline;">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+            <button type="submit" class="btn btn-logout">Logout</button>
+        </form>
+    </div>
 
-{% endblock%} 
+    <div class="admin-section">
+        <h2>User Management</h2>
+        
+        {% if users %}
+            <div class="users-table">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Email</th>
+                            <th>Status</th>
+                            <th>Role</th>
+                            <th>Verified</th>
+                            <th>Created</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for user in users %}
+                        <tr>
+                            <td>{{ user.email }}</td>
+                            <td>
+                                {% if user.is_banned %}
+                                    <span class="badge badge-banned">Banned</span>
+                                {% elif user.is_bruteforced %}
+                                    <span class="badge badge-locked">Locked</span>
+                                {% elif user.is_verified %}
+                                    <span class="badge badge-active">Active</span>
+                                {% else %}
+                                    <span class="badge badge-unverified">Unverified</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if user.is_admin %}
+                                    <span class="badge badge-admin">Admin</span>
+                                {% else %}
+                                    <span class="badge badge-user">User</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if user.is_verified %}
+                                    <span class="badge badge-verified">Yes</span>
+                                {% else %}
+                                    <span class="badge badge-unverified">No</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ user.created_at.strftime('%Y-%m-%d') }}</td>
+                            <td class="actions">
+                                {% if user.id != admin.id %}
+                                    <form method="post" action="{{ url_for('ban_user', user_id=user.id) }}" style="display:inline;">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                                        {% if user.is_banned %}
+                                            <button type="submit" class="btn btn-sm btn-unban" 
+                                                    onclick="return confirm('Unban {{ user.email }}?');">
+                                                Unban
+                                            </button>
+                                        {% else %}
+                                            <button type="submit" class="btn btn-sm btn-ban" 
+                                                    onclick="return confirm('Ban {{ user.email }}?');">
+                                                Ban
+                                            </button>
+                                        {% endif %}
+                                    </form>
+                                    
+                                    <form method="post" action="{{ url_for('make_admin', user_id=user.id) }}" style="display:inline;">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                                        {% if user.is_admin %}
+                                            <button type="submit" class="btn btn-sm btn-revoke-admin" 
+                                                    onclick="return confirm('Revoke admin privileges from {{ user.email }}?');">
+                                                Revoke Admin
+                                            </button>
+                                        {% else %}
+                                            <button type="submit" class="btn btn-sm btn-grant-admin" 
+                                                    onclick="return confirm('Grant admin privileges to {{ user.email }}?');">
+                                                Make Admin
+                                            </button>
+                                        {% endif %}
+                                    </form>
+                                {% else %}
+                                    <span class="text-muted">You</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <p>No users found.</p>
+        {% endif %}
+    </div>
+
+    <div class="admin-section" style="margin-top: 2.5rem;">
+        <h2>Audit Logs</h2>
+        {% if logs %}
+            <div class="users-table">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Time</th>
+                            <th>Action</th>
+                            <th>User</th>
+                            <th>Target Type</th>
+                            <th>Target ID</th>
+                            <th>IP Address</th>
+                            <th>Details</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for log in logs %}
+                        <tr>
+                            <td>{{ log.timestamp.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+                            <td><span class="badge badge-user">{{ log.action_type }}</span></td>
+                            <td>{{ user_map.get(log.actor_id, 'Unknown') }}</td>
+                            <td>{{ log.target_type or '-' }}</td>
+                            <td>{{ log.target_id or '-' }}</td>
+                            <td>{{ log.ip_address or '-' }}</td>
+                            <td>{{ log.details or '-' }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="dashboard-actions" style="margin-top: 1.5rem;">
+                {% if logs_page.has_prev %}
+                    <a href="{{ url_for('dashboard', page=logs_page.prev_num) }}" class="btn btn-primary">Previous</a>
+                {% endif %}
+                <span class="text-muted">Page {{ logs_page.page }} of {{ logs_page.pages }}</span>
+                {% if logs_page.has_next %}
+                    <a href="{{ url_for('dashboard', page=logs_page.next_num) }}" class="btn btn-primary">Next</a>
+                {% endif %}
+            </div>
+        {% else %}
+            <p>No logs recorded yet.</p>
+        {% endif %}
+    </div>
+</div>
+{% endblock%}

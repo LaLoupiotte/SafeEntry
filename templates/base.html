@@ -3,13 +3,18 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{url_for('static', filename='style.css')}}">
     <script src="https://www.google.com/recaptcha/api.js" async defer></script>
-    <title>Safe Entry</title>
+    <title>SafeEntry - Meme Sharing Platform</title>
 </head>
 <body>
 
-    <header class="app_header">Application Security Project</header>
+    <header class="app_header">
+        <span style="background: linear-gradient(135deg, #6366f1, #8b5cf6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">SafeEntry</span> - Meme Sharing Platform
+    </header>
     
     <main class="content-area">
         {% block body%}

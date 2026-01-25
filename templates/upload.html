@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+
+{% block body %}
+<div class="container">
+    <h1>Upload a Meme</h1>
+    
+    {% if error %}
+        <div class="error-message">
+            <p>{{ error }}</p>
+        </div>
+    {% endif %}
+    
+    <form method="post" action="{{ url_for('upload_meme') }}" enctype="multipart/form-data" class="upload-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+        
+        <div class="form-group">
+            <label for="file">Select Image (JPG, PNG, or GIF):</label>
+            <input type="file" name="file" id="file" accept=".jpg,.jpeg,.png,.gif" required class="file-input">
+            <small>Maximum file size: 10MB</small>
+        </div>
+        
+        <div class="form-group">
+            <label for="caption">Caption (optional):</label>
+            <textarea name="caption" id="caption" rows="3" 
+                      placeholder="Enter a caption for your meme..." 
+                      class="caption-input"></textarea>
+        </div>
+        
+        <div class="form-actions">
+            <button type="submit" class="btn btn-upload">Upload Meme</button>
+            <a href="{{ url_for('memes') }}" class="btn btn-cancel">Cancel</a>
+        </div>
+    </form>
+    
+    <div class="preview-container" id="preview" style="display: none;">
+        <h3>Preview:</h3>
+        <img id="preview-image" src="" alt="Preview" class="preview-image">
+    </div>
+</div>
+
+<script>
+// Preview image before upload
+document.getElementById('file').addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    if (file) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            document.getElementById('preview-image').src = e.target.result;
+            document.getElementById('preview').style.display = 'block';
+        };
+        reader.readAsDataURL(file);
+    } else {
+        document.getElementById('preview').style.display = 'none';
+    }
+});
+</script>
+{% endblock %}
+
+
